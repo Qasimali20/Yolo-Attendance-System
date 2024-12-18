@@ -2,11 +2,13 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance Results</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -66,9 +68,9 @@
         }
 
         .image-container img {
-            max-width: 100%;  /* Makes the image responsive */
-            max-height: 500px;  /* Limits the height of the image */
-            object-fit: contain; /* Ensures the image maintains aspect ratio within bounds */
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
@@ -102,7 +104,6 @@
             text-decoration: underline;
         }
 
-        /* Button Styling */
         .back-button {
             display: inline-block;
             background-color: #0066cc;
@@ -134,8 +135,54 @@
         .download-button:hover {
             background-color: #218838;
         }
+
+        #excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            text-align: left;
+        }
+
+        #excel-table th,
+        #excel-table td {
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+        }
+
+        #excel-table th {
+            background-color: #0066cc;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #excel-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        #excel-table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        #excel-table td.present {
+            background-color: #d4edda;
+            color: #155724;
+            font-weight: bold;
+        }
+
+        #excel-table td.absent {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -144,36 +191,83 @@
 
     <div class="container">
         {% if detected_classes %}
-            <h2>Detected Students:</h2>
-            <ul>
-                {% for student in detected_classes %}
-                    <li>{{ student }}</li>
-                {% endfor %}
-            </ul>
+        <h2>Detected Students:</h2>
+        <ul>
+            {% for student in detected_classes %}
+            <li>{{ student }}</li>
+            {% endfor %}
+        </ul>
 
-            <div class="image-container">
-                <h3>Annotated Image:</h3>
-                {% if annotated_image_url %}
-                    <img src="{{ annotated_image_url }}" alt="Annotated Image">
-                {% else %}
-                    <p>Annotated image is not available.</p>
-                {% endif %}
-            </div>
+        <div class="image-container">
+            <h3>Annotated Image:</h3>
+            {% if annotated_image_url %}
+            <img src="{{ annotated_image_url }}" alt="Annotated Image">
+            {% else %}
+            <p>Annotated image is not available.</p>
+            {% endif %}
+        </div>
         {% else %}
-            <div class="alert">
-                <p>No students detected. Please try uploading another image.</p>
-            </div>
+        <div class="alert">
+            <p>No students detected. Please try uploading another image.</p>
+        </div>
         {% endif %}
-        
+
         <!-- Back to Upload Button -->
-        <a href="/upload" class="back-button">Back to Upload</a>
+        <a href="/" class="back-button">Back to Upload</a>
 
         <!-- Download Attendance Button -->
         {% if attendance_file %}
-            <a href="{{ attendance_file }}" class="download-button" download>Download Attendance Excel</a>
+        <a href="{{ attendance_file }}" class="download-button" download>Download Attendance Excel</a>
         {% else %}
-            <p>Attendance Excel is not available yet.</p>
+        <p>Attendance Excel is not available yet.</p>
         {% endif %}
+
+        <!-- Display the Excel File as a Table -->
+        {% if attendance_file %}
+        <h3>Attendance Data:</h3>
+        <table id="excel-table"></table>
+        <script>
+            // Function to load and display the Excel file content
+            function displayExcel(fileUrl) {
+    fetch(fileUrl)
+        .then(response => response.arrayBuffer())
+        .then(data => {
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0]; // First sheet
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonSheet = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            // Create the table dynamically
+            const table = document.getElementById("excel-table");
+            table.innerHTML = "";
+
+            jsonSheet.forEach((row, rowIndex) => {
+                const tr = document.createElement("tr");
+
+                row.forEach((cell, colIndex) => {
+                    const td = document.createElement(rowIndex === 0 ? "th" : "td");
+                    td.textContent = cell;
+
+                    // Highlight "Present" or "Absent" rows
+                    if (rowIndex !== 0 && colIndex === 1) {
+                        const attendanceStatus = cell.toLowerCase();
+                        td.classList.add(attendanceStatus === "present" ? "present" : "absent");
+                    }
+                    tr.appendChild(td);
+                });
+
+                table.appendChild(tr);
+            });
+        })
+        .catch(error => console.error("Error loading Excel file:", error));
+}
+
+// Automatically load and display the attendance file
+displayExcel("{{ attendance_file }}");
+
+        </script>
+        {% endif %}
+
     </div>
 
     <footer>
@@ -181,4 +275,5 @@
     </footer>
 
 </body>
+
 </html>

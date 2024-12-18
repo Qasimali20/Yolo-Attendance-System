@@ -11,6 +11,12 @@ from urllib.parse import quote
 # Path to save annotated images
 MEDIA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'media')
 
+# Example: Define a list of all student IDs (this can be dynamically retrieved from a database)
+all_student_ids = ['2021685', '2022074', '2022081', '2022120', '2022133', '2022214', '2022246',
+                 '2022248', '2022274', '2022277', '2022284', '2022383', '2022387', '2022405',
+                   '2022414', '2022477', '2022531', '2022624', '2022655', '2022656', 
+                   '2022664', '2022669', '2022672', '2022909']  # Replace with actual student IDs
+
 def upload_image(request):
     if request.method == 'POST' and request.FILES['file']:
         # Save the uploaded file
@@ -37,8 +43,14 @@ def upload_image(request):
         annotated_image.save(annotated_image_path)
 
         # Generate Excel file with detected students
+        attendance_data = []
+        for student_id in all_student_ids:
+            if student_id in detected_classes:
+                attendance_data.append({"Student ID": student_id, "Presence": "Present"})
+            else:
+                attendance_data.append({"Student ID": student_id, "Presence": "Absent"})
+
         excel_file_path = os.path.join(MEDIA_DIR, 'attendance.xlsx')
-        attendance_data = [{"Student ID": cls, "Presence": "Present"} for cls in detected_classes]
         df = pd.DataFrame(attendance_data)
         df.to_excel(excel_file_path, index=False)
 
